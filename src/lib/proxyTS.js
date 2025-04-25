@@ -17,9 +17,13 @@ export async function proxyTs(url, headers, req, res) {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
+      Referer: "https://megacloud.blog/",
       ...headers,
     },
   };
+
+  console.log("Proxying TS segment:", url);
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
   res.setHeader("Access-Control-Allow-Methods", "*");
@@ -35,6 +39,18 @@ export async function proxyTs(url, headers, req, res) {
         });
       });
 
+      proxy.on("error", (err) => {
+        console.error("HTTPS proxy error:", err);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: "Failed to proxy TS segment",
+            details: err.message,
+            url: url,
+          })
+        );
+      });
+
       req.pipe(proxy, {
         end: true,
       });
@@ -47,13 +63,33 @@ export async function proxyTs(url, headers, req, res) {
           end: true,
         });
       });
+
+      proxy.on("error", (err) => {
+        console.error("HTTP proxy error:", err);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: "Failed to proxy TS segment",
+            details: err.message,
+            url: url,
+          })
+        );
+      });
+
       req.pipe(proxy, {
         end: true,
       });
     }
   } catch (e) {
-    res.writeHead(500);
-    res.end(e.message);
+    console.error("Proxy error:", e);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        error: "Failed to proxy TS segment",
+        details: e.message,
+        url: url,
+      })
+    );
     return null;
   }
 }
